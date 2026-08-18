@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# A newer push to the same ref makes the in-flight run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck, lint, unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+
+  e2e:
+    name: End-to-end
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      # Only Chromium: the suite exercises the two viewport sizes the app gets installed on,
+      # not browser rendering differences. (Some dev environments ship a pre-installed browser
+      # that scripts/chromium.mjs finds instead; on a clean runner there is nothing to find.)
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+      # The screenshot spec walks every screen; keeping the images makes UI review possible
+      # from the PR itself rather than needing a local checkout.
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: screenshots
+          path: screenshots/
+          retention-days: 7

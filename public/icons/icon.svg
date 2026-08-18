@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+    <rect width="512" height="512" rx="112" fill="#171310" />
+    
+    <g transform="translate(256 256) scale(0.92) translate(-256 -256)">
+      <!-- dial marks: the grinder setting, which is what this app is really about -->
+      <g stroke="#a3866d" stroke-width="14" stroke-linecap="round" opacity="0.85">
+        <path d="M150 120 L150 96" />
+        <path d="M203 110 L203 92" />
+        <path d="M256 104 L256 74" />
+        <path d="M309 110 L309 92" />
+        <path d="M362 120 L362 96" />
+      </g>
+      <!-- cup body -->
+      <path d="M120 200 h240 v56 a120 120 0 0 1 -240 0 z" fill="#f0e9e2" />
+      <!-- crema surface -->
+      <ellipse cx="240" cy="200" rx="120" ry="26" fill="#c98500" />
+      <!-- handle -->
+      <path d="M360 214 h26 a52 52 0 0 1 0 104 h-14"
+            fill="none" stroke="#f0e9e2" stroke-width="26" stroke-linecap="round" />
+      <!-- saucer -->
+      <rect x="92" y="392" width="296" height="26" rx="13" fill="#a3866d" />
+    </g>
+  </svg>

@@ -1,0 +1,60 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    # Every branch is matched here and then filtered to the default branch in the job's `if`.
+    # Actions has no "default branch" keyword for this list, and hardcoding `main` would mean
+    # the workflow silently never runs in a repository whose trunk is named anything else.
+    branches: ['**']
+  # Lets you publish on demand, which is how you get a URL to install from before merging.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time; never cancel a running one, or Pages can be left half-updated.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # Only the trunk publishes. A manual run is always allowed, so you can preview any branch.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Build
+        # A project Pages site is served from /<repo>/, and the app's base path, router basename
+        # and manifest scope all derive from this one value. Getting it wrong yields a blank
+        # installed app, so it is passed explicitly rather than assumed.
+        run: npm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+      - name: SPA fallback
+        # Pages serves static files, so a deep link like /Home-Manager/beans would 404 on
+        # refresh. Serving index.html as the 404 page hands those URLs back to the router.
+        run: cp dist/index.html dist/404.html
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

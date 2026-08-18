@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Espresso Dial-In Coach</title>
+    <meta
+      name="description"
+      content="Offline espresso dial-in coach: staged pre-infusion timer, shot log, and grind suggestions."
+    />
+
+    <!-- iOS has no beforeinstallprompt; these are what make "Add to Home Screen" behave like an app. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Dial-In" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+
+    <meta name="theme-color" content="#171310" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

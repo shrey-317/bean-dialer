@@ -1,0 +1,81 @@
+@import 'tailwindcss';
+
+/*
+ * Kitchen-first palette. The app is read at arm's length, often in a dim kitchen,
+ * sometimes with wet hands — so: dark by default, high contrast, big hit targets.
+ * Warm neutrals rather than blue-greys, because everything on screen is coffee.
+ */
+@theme {
+  --color-crust-50: #faf7f4;
+  --color-crust-100: #f0e9e2;
+  --color-crust-200: #ddcfc2;
+  --color-crust-300: #c2ab98;
+  --color-crust-400: #a3866d;
+  --color-crust-500: #8a6a50;
+  --color-crust-600: #6d5340;
+  --color-crust-700: #4f3c2f;
+  --color-crust-800: #332720;
+  --color-crust-900: #211a15;
+  --color-crust-950: #171310;
+
+  /* Stage colors for the shot timer — deliberately far apart so a glance from
+     a meter away is unambiguous even without reading the label. */
+  --color-stage-idle: #4f3c2f;
+  --color-stage-p1: #2563a8;
+  --color-stage-bloom: #7a5ea8;
+  --color-stage-extract: #b4762a;
+  --color-stage-done: #2f7d4f;
+
+  /* Semantic accents */
+  --color-good: #3d9e6b;
+  --color-warn: #d08a2c;
+  --color-bad: #c1503f;
+}
+
+:root {
+  color-scheme: dark light;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-crust-950);
+  color: var(--color-crust-100);
+  -webkit-font-smoothing: antialiased;
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  /* An installed PWA should not rubber-band or text-select like a web page. */
+  overscroll-behavior-y: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Inputs still need selection and the platform keyboard. */
+input,
+textarea,
+[contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Tabular figures keep the running timer from jittering as digits change width. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
