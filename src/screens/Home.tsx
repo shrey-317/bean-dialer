@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AdviceCard } from '../components/AdviceCard.tsx';
-import { BigButton, Card, EmptyState, SectionTitle, StatTile } from '../components/ui.tsx';
+import { BigButton, Card, EmptyState, Keypad, SectionTitle, StatTile } from '../components/ui.tsx';
 import { daysOffRoast, restVerdict } from '../db/repo/beans.ts';
+import { sessionsRepo } from '../db/repo/sessions.ts';
 import { brewRatio, shotTimeOnBasis, windowVerdict } from '../domain/metrics.ts';
 import type { Shot, Targets } from '../domain/types.ts';
 import { applyAdvice, declineAdvice } from '../hooks/actions.ts';
@@ -14,6 +16,8 @@ import { useDialIn } from '../hooks/data.ts';
 export function Home() {
   const ctx = useDialIn();
   const navigate = useNavigate();
+  // Hooks run before either early return below, so this can't move closer to where it's used.
+  const [dialKeypadOpen, setDialKeypadOpen] = useState(false);
 
   if (ctx === undefined) {
     return <p className="mt-8 text-center text-sm text-crust-500">Loading…</p>;
@@ -62,13 +66,30 @@ export function Home() {
               </p>
             </Link>
           </div>
-          <div className="shrink-0 text-right">
+          <button
+            type="button"
+            aria-label="Edit dial"
+            onClick={() => setDialKeypadOpen(true)}
+            className="shrink-0 rounded-lg text-right active:opacity-70"
+          >
             <div className="text-[11px] uppercase tracking-wider text-crust-500">Dial</div>
             <div className="tnum text-3xl font-bold leading-none text-crust-50">
               {session.currentDial.toFixed(dialStep < 1 ? 1 : 0)}
             </div>
-          </div>
+          </button>
         </div>
+
+        {dialKeypadOpen ? (
+          <Keypad
+            label="Dial"
+            value={session.currentDial}
+            min={grinder?.spec.dialMin}
+            max={grinder?.spec.dialMax}
+            decimals={dialStep < 1 ? 1 : 0}
+            onCommit={(next) => void sessionsRepo.setDial(session.id, next)}
+            onClose={() => setDialKeypadOpen(false)}
+          />
+        ) : null}
 
         <dl className="mt-4 grid grid-cols-4 gap-2 border-t border-crust-800 pt-3 text-center">
           <Spec label="Dose" value={`${session.targets.doseG}g`} />

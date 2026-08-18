@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { adviceHeadline, gotoFresh, nav, pullShot } from './helpers.ts';
+import { PRE_INFUSION_SEC, adviceHeadline, gotoFresh, nav, pullShot, settle } from './helpers.ts';
 
 /**
  * End-to-end coverage of the dial-in loop.
@@ -114,4 +114,50 @@ test('a discarded shot is logged but kept out of the advice', async ({ page }) =
 
   await nav(page, 'Home').click();
   await expect(adviceHeadline(page)).toContainText('Start at 16.5');
+});
+
+test('the dial can be edited with the on-screen keypad, and the edit carries into the next pull', async ({
+  page,
+}) => {
+  await page.getByRole('button', { name: 'Edit dial' }).click();
+  await page.getByRole('button', { name: '1', exact: true }).click();
+  await page.getByRole('button', { name: '3', exact: true }).click();
+  await page.getByRole('button', { name: 'Done' }).click();
+
+  // Home reflects the typed value immediately.
+  await expect(page.getByText('13.0', { exact: true })).toBeVisible();
+
+  // So does the Timer's pre-start screen, and so does the log sheet once a shot is pulled.
+  await nav(page, 'Pull').click();
+  await expect(page.getByText('Dial 13')).toBeVisible();
+
+  await page.getByRole('button', { name: /^Start/ }).click();
+  await page.clock.runFor((PRE_INFUSION_SEC + 25) * 1000);
+  await page.getByRole('button', { name: 'Stop' }).click();
+
+  await expect(page.getByLabel('Dial', { exact: true })).toHaveValue('13.0');
+});
+
+test('a manually corrected dial becomes the working dial even without applying advice', async ({
+  page,
+}) => {
+  await nav(page, 'Pull').click();
+  await page.getByRole('button', { name: /^Start/ }).click();
+  await page.clock.runFor((PRE_INFUSION_SEC + 22) * 1000);
+  await page.getByRole('button', { name: 'Stop' }).click();
+
+  await expect(page.getByText('What the timer saw')).toBeVisible();
+  await page.getByLabel('Yield', { exact: true }).fill('40.0');
+  // Hand-turned the grinder to 13 instead of following any suggestion — nothing here ever taps
+  // an "Apply"/"Set dial to" button, which is the point of the test.
+  await page.getByLabel('Dial', { exact: true }).fill('13.0');
+  await page.getByRole('button', { name: 'Save shot' }).click();
+  await expect(page.getByRole('button', { name: 'Pull another' })).toBeVisible();
+  await settle(page);
+
+  await nav(page, 'Home').click();
+  await expect(page.getByText('13.0', { exact: true })).toBeVisible();
+
+  await nav(page, 'Pull').click();
+  await expect(page.getByText('Dial 13')).toBeVisible();
 });

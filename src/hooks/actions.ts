@@ -36,6 +36,19 @@ export async function declineAdvice(latestShot?: Shot): Promise<void> {
 }
 
 /**
+ * Keep the session's working dial in sync with whatever was actually pulled at.
+ *
+ * `applyAdvice` above covers the "accepted the coach's suggestion" path. This covers every
+ * other one — a manual correction typed into the log sheet, a shot pulled without touching
+ * advice at all — so the *next* pull (and the Home/Timer displays in the meantime) starts from
+ * where the grinder was really left, not from a stale suggestion. A later `applyAdvice` call is
+ * expected to overwrite this, same as it already overwrites any other `currentDial`.
+ */
+export async function recordPulledDial(session: Session, dial: number): Promise<void> {
+  if (dial !== session.currentDial) await sessionsRepo.setDial(session.id, dial);
+}
+
+/**
  * Where to start the grinder for a new session.
  *
  * Preference order, best evidence first:

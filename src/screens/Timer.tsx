@@ -2,7 +2,8 @@ import { useEffect, useReducer, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdviceCard } from '../components/AdviceCard.tsx';
 import { LogShotSheet } from '../components/LogShotSheet.tsx';
-import { BigButton, Button, EmptyState } from '../components/ui.tsx';
+import { BigButton, Button, EmptyState, Keypad } from '../components/ui.tsx';
+import { sessionsRepo } from '../db/repo/sessions.ts';
 import {
   clearSavedTimer,
   elapsedMs,
@@ -51,6 +52,9 @@ export function TimerScreen() {
     restoreTimer({ p1Sec: 3, p2Sec: 6 }),
   );
   const [savedShotId, setSavedShotId] = useState<string | null>(null);
+  // Declared here, not near the pre-start dial line below, since hooks must run unconditionally
+  // and this component has several early returns before that line.
+  const [dialKeypadOpen, setDialKeypadOpen] = useState(false);
 
   const stage = stageOf(state);
   const running = isRunning(state);
@@ -212,14 +216,30 @@ export function TimerScreen() {
         {!running ? (
           <>
             <div className="flex items-baseline justify-between text-sm text-crust-400">
-              <span>
+              <button
+                type="button"
+                aria-label="Edit dial"
+                onClick={() => setDialKeypadOpen(true)}
+                className="active:opacity-70"
+              >
                 Dial <span className="tnum font-semibold text-crust-100">{ctx.session.currentDial}</span>
-              </span>
+              </button>
               <span className="tnum">
                 {ctx.session.targets.doseG}g → {ctx.session.targets.yieldG}g ·{' '}
                 {ctx.session.targets.tempC}°C
               </span>
             </div>
+            {dialKeypadOpen ? (
+              <Keypad
+                label="Dial"
+                value={ctx.session.currentDial}
+                min={ctx.grinder.spec.dialMin}
+                max={ctx.grinder.spec.dialMax}
+                decimals={ctx.grinder.spec.dialStep < 1 ? 1 : 0}
+                onCommit={(next) => void sessionsRepo.setDial(ctx.session!.id, next)}
+                onClose={() => setDialKeypadOpen(false)}
+              />
+            ) : null}
             <BigButton
               onClick={() => {
                 // Must happen inside the gesture, or the browser blocks audio afterwards.

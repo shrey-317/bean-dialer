@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
+import { useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react';
 
 /**
  * Shared UI primitives.
@@ -176,11 +176,25 @@ export function TextInput({ className = '', ...rest }: InputHTMLAttributes<HTMLI
   );
 }
 
+/** Shared by `Stepper` and `Keypad` so both round/bound a typed or stepped value the same way. */
+export function clampNumeric(
+  n: number,
+  { min, max, decimals = 1 }: { min?: number; max?: number; decimals?: number },
+): number {
+  const bounded = Math.min(max ?? Infinity, Math.max(min ?? -Infinity, n));
+  // Re-round after arithmetic so 16.5 + 0.5 shows as 17, not 16.999999999999998.
+  return Number(bounded.toFixed(Math.max(decimals, 0)));
+}
+
 /**
  * Numeric entry with big +/- buttons flanking a real number input.
  *
- * Both routes matter: stepping is what you use with one hand at the machine, and typing is
- * what you use when reading 41.3 off a scale.
+ * Three routes in, all landing on the same `onChange`: the +/- buttons for one-handed
+ * adjustment at the machine, tapping the number to open the `Keypad` (the primary route on a
+ * phone), and typing directly into the input for anything that reads or scripts it — a
+ * Bluetooth keyboard, an accessibility tool, or Playwright's `.fill()` in the e2e suite.
+ * `inputMode="none"` only suppresses the OS's own on-screen keyboard; it changes nothing about
+ * that third route.
  */
 export function Stepper({
   value,
@@ -201,11 +215,8 @@ export function Stepper({
   decimals?: number;
   label: string;
 }) {
-  const clamp = (n: number) => {
-    const bounded = Math.min(max ?? Infinity, Math.max(min ?? -Infinity, n));
-    // Re-round after arithmetic so 16.5 + 0.5 shows as 17, not 16.999999999999998.
-    return Number(bounded.toFixed(Math.max(decimals, 0)));
-  };
+  const [keypadOpen, setKeypadOpen] = useState(false);
+  const clamp = (n: number) => clampNumeric(n, { min, max, decimals });
 
   return (
     <div className="flex items-stretch gap-2">
@@ -222,9 +233,14 @@ export function Stepper({
           stepper sits in a narrow column. */}
       <div className="relative min-w-0 flex-1">
         <input
-          inputMode="decimal"
+          // Not readOnly/disabled — Playwright's `.fill()` requires an editable input, and a
+          // real Bluetooth keyboard should still just work. `onClick` (not `onFocus`) is what
+          // opens the keypad, and `.fill()` never dispatches a click, so the e2e suite bypasses
+          // the overlay entirely and sets the value directly, same as before.
+          inputMode="none"
           aria-label={label}
           value={Number.isFinite(value) ? value.toFixed(decimals) : ''}
+          onClick={() => setKeypadOpen(true)}
           onChange={(e) => {
             const next = Number.parseFloat(e.target.value);
             if (!Number.isNaN(next)) onChange(clamp(next));
@@ -247,6 +263,121 @@ export function Stepper({
       >
         +
       </Button>
+      {keypadOpen ? (
+        <Keypad
+          label={label}
+          unit={unit}
+          value={value}
+          min={min}
+          max={max}
+          decimals={decimals}
+          onCommit={onChange}
+          onClose={() => setKeypadOpen(false)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+const KEYPAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫'] as const;
+
+/**
+ * A purpose-built on-screen numeric keypad, standing in for the OS's own decimal keyboard.
+ *
+ * The typed buffer starts empty rather than pre-loaded with `value` — the first digit tapped
+ * always starts a fresh number, so there's no separate "clear" step before correcting a
+ * misread scale value. `value` itself only shows as a dimmed placeholder until something is
+ * typed.
+ */
+export function Keypad({
+  label,
+  unit,
+  value,
+  min,
+  max,
+  decimals = 1,
+  onCommit,
+  onClose,
+}: {
+  label: string;
+  unit?: string;
+  value: number;
+  min?: number;
+  max?: number;
+  decimals?: number;
+  onCommit: (next: number) => void;
+  onClose: () => void;
+}) {
+  const [buffer, setBuffer] = useState('');
+
+  const press = (key: (typeof KEYPAD_KEYS)[number]) => {
+    if (key === '⌫') {
+      setBuffer((b) => b.slice(0, -1));
+    } else if (key === '.') {
+      if (decimals > 0 && !buffer.includes('.')) setBuffer((b) => b + key);
+    } else {
+      setBuffer((b) => b + key);
+    }
+  };
+
+  const commit = () => {
+    // Nothing typed: closing without a change is expected, not an error — the field just
+    // keeps whatever it already had.
+    if (buffer !== '') {
+      const parsed = Number.parseFloat(buffer);
+      if (!Number.isNaN(parsed)) onCommit(clampNumeric(parsed, { min, max, decimals }));
+    }
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-30 flex items-end" role="dialog" aria-label={`Edit ${label}`}>
+      <button
+        type="button"
+        aria-label="Cancel"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/50"
+      />
+      <div className="relative w-full space-y-4 rounded-t-2xl border-t border-crust-800 bg-crust-900 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+        <div className="text-center">
+          <div className="text-xs font-semibold uppercase tracking-widest text-crust-400">
+            {label}
+          </div>
+          <div className="tnum mt-1 text-4xl font-bold leading-none text-crust-50">
+            {buffer !== '' ? (
+              buffer
+            ) : (
+              <span className="text-crust-600">{value.toFixed(decimals)}</span>
+            )}
+            {unit ? <span className="ml-1 text-lg font-normal text-crust-500">{unit}</span> : null}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2">
+          {KEYPAD_KEYS.map((key) => (
+            <Button
+              key={key}
+              type="button"
+              variant="secondary"
+              disabled={key === '.' && decimals === 0}
+              aria-label={key === '⌫' ? 'Backspace' : key === '.' ? 'Decimal point' : key}
+              onClick={() => press(key)}
+              className="min-h-16 text-2xl"
+            >
+              {key}
+            </Button>
+          ))}
+        </div>
+
+        <div className="flex gap-2">
+          <Button variant="ghost" className="flex-1" onClick={onClose}>
+            Cancel
+          </Button>
+          <BigButton className="flex-1" onClick={commit}>
+            Done
+          </BigButton>
+        </div>
+      </div>
     </div>
   );
 }

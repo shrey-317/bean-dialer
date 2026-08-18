@@ -4,6 +4,7 @@ import { adviceFor } from '../domain/advice.ts';
 import { toShotTimes, type TimerState } from '../domain/timer.ts';
 import type { CremaColor, Shot, TasteTag } from '../domain/types.ts';
 import type { DialInContext } from '../hooks/data.ts';
+import { recordPulledDial } from '../hooks/actions.ts';
 import { BigButton, Button, Card, Chip, Field, Rating, SectionTitle, Stepper, TextInput, Toggle } from './ui.tsx';
 
 /**
@@ -100,6 +101,9 @@ export function LogShotSheet({
         ...fields,
         ...(suggestion ? { suggestion } : {}),
       });
+      // Whatever dial the shot actually went in at becomes the working dial from here on —
+      // a manual correction here shouldn't be forgotten the moment the sheet closes.
+      await recordPulledDial(session!, dial);
       onSaved(shot.id);
     } finally {
       setSaving(false);
