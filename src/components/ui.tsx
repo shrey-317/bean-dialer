@@ -331,7 +331,61 @@ export function Keypad({
   };
 
   return (
-    <div className="fixed inset-0 z-30 flex items-end" role="dialog" aria-label={`Edit ${label}`}>
+    <Sheet label={`Edit ${label}`} onClose={onClose}>
+      <div className="text-center">
+        <div className="text-xs font-semibold uppercase tracking-widest text-crust-400">
+          {label}
+        </div>
+        <div className="tnum mt-1 text-4xl font-bold leading-none text-crust-50">
+          {buffer !== '' ? buffer : <span className="text-crust-600">{value.toFixed(decimals)}</span>}
+          {unit ? <span className="ml-1 text-lg font-normal text-crust-500">{unit}</span> : null}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        {KEYPAD_KEYS.map((key) => (
+          <Button
+            key={key}
+            type="button"
+            variant="secondary"
+            disabled={key === '.' && decimals === 0}
+            aria-label={key === '⌫' ? 'Backspace' : key === '.' ? 'Decimal point' : key}
+            onClick={() => press(key)}
+            className="min-h-16 text-2xl"
+          >
+            {key}
+          </Button>
+        ))}
+      </div>
+
+      <div className="flex gap-2">
+        <Button variant="ghost" className="flex-1" onClick={onClose}>
+          Cancel
+        </Button>
+        <BigButton className="flex-1" onClick={commit}>
+          Done
+        </BigButton>
+      </div>
+    </Sheet>
+  );
+}
+
+/**
+ * A bottom sheet: backdrop tap-to-close plus a rounded panel anchored to the bottom edge.
+ * `Keypad` is built on this; anything else that needs a modal on a phone screen should be too,
+ * rather than reinventing the backdrop/safe-area handling.
+ */
+export function Sheet({
+  label,
+  onClose,
+  children,
+}: {
+  label: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-30 flex items-end" role="dialog" aria-label={label}>
       <button
         type="button"
         aria-label="Cancel"
@@ -339,44 +393,7 @@ export function Keypad({
         className="absolute inset-0 bg-black/50"
       />
       <div className="relative w-full space-y-4 rounded-t-2xl border-t border-crust-800 bg-crust-900 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-        <div className="text-center">
-          <div className="text-xs font-semibold uppercase tracking-widest text-crust-400">
-            {label}
-          </div>
-          <div className="tnum mt-1 text-4xl font-bold leading-none text-crust-50">
-            {buffer !== '' ? (
-              buffer
-            ) : (
-              <span className="text-crust-600">{value.toFixed(decimals)}</span>
-            )}
-            {unit ? <span className="ml-1 text-lg font-normal text-crust-500">{unit}</span> : null}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2">
-          {KEYPAD_KEYS.map((key) => (
-            <Button
-              key={key}
-              type="button"
-              variant="secondary"
-              disabled={key === '.' && decimals === 0}
-              aria-label={key === '⌫' ? 'Backspace' : key === '.' ? 'Decimal point' : key}
-              onClick={() => press(key)}
-              className="min-h-16 text-2xl"
-            >
-              {key}
-            </Button>
-          ))}
-        </div>
-
-        <div className="flex gap-2">
-          <Button variant="ghost" className="flex-1" onClick={onClose}>
-            Cancel
-          </Button>
-          <BigButton className="flex-1" onClick={commit}>
-            Done
-          </BigButton>
-        </div>
+        {children}
       </div>
     </div>
   );

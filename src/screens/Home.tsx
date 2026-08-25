@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AdviceCard } from '../components/AdviceCard.tsx';
 import { BigButton, Card, EmptyState, Keypad, SectionTitle, StatTile } from '../components/ui.tsx';
-import { daysOffRoast, restVerdict } from '../db/repo/beans.ts';
+import { beanProcesses, daysOffRoast, restVerdict } from '../db/repo/beans.ts';
 import { sessionsRepo } from '../db/repo/sessions.ts';
 import { brewRatio, shotTimeOnBasis, windowVerdict } from '../domain/metrics.ts';
 import type { Shot, Targets } from '../domain/types.ts';
@@ -61,7 +61,7 @@ export function Home() {
               </h1>
               <p className="truncate text-sm text-crust-400">
                 {bean?.roaster}
-                {bean?.process ? ` · ${bean.process}` : ''}
+                {bean && beanProcesses(bean).length > 0 ? ` · ${beanProcesses(bean).join(' + ')}` : ''}
                 {days !== undefined ? ` · ${days}d off roast` : ''}
               </p>
             </Link>

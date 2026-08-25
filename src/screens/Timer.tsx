@@ -2,6 +2,7 @@ import { useEffect, useReducer, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdviceCard } from '../components/AdviceCard.tsx';
 import { LogShotSheet } from '../components/LogShotSheet.tsx';
+import { RecipeSheet } from '../components/RecipeSheet.tsx';
 import { BigButton, Button, EmptyState, Keypad } from '../components/ui.tsx';
 import { sessionsRepo } from '../db/repo/sessions.ts';
 import {
@@ -52,9 +53,10 @@ export function TimerScreen() {
     restoreTimer({ p1Sec: 3, p2Sec: 6 }),
   );
   const [savedShotId, setSavedShotId] = useState<string | null>(null);
-  // Declared here, not near the pre-start dial line below, since hooks must run unconditionally
-  // and this component has several early returns before that line.
+  // Declared here, not near the pre-start dial/recipe lines below, since hooks must run
+  // unconditionally and this component has several early returns before those lines.
   const [dialKeypadOpen, setDialKeypadOpen] = useState(false);
+  const [recipeSheetOpen, setRecipeSheetOpen] = useState(false);
 
   const stage = stageOf(state);
   const running = isRunning(state);
@@ -224,10 +226,15 @@ export function TimerScreen() {
               >
                 Dial <span className="tnum font-semibold text-crust-100">{ctx.session.currentDial}</span>
               </button>
-              <span className="tnum">
+              <button
+                type="button"
+                aria-label="Edit recipe"
+                onClick={() => setRecipeSheetOpen(true)}
+                className="tnum active:opacity-70"
+              >
                 {ctx.session.targets.doseG}g → {ctx.session.targets.yieldG}g ·{' '}
                 {ctx.session.targets.tempC}°C
-              </span>
+              </button>
             </div>
             {dialKeypadOpen ? (
               <Keypad
@@ -239,6 +246,9 @@ export function TimerScreen() {
                 onCommit={(next) => void sessionsRepo.setDial(ctx.session!.id, next)}
                 onClose={() => setDialKeypadOpen(false)}
               />
+            ) : null}
+            {recipeSheetOpen ? (
+              <RecipeSheet session={ctx.session} onClose={() => setRecipeSheetOpen(false)} />
             ) : null}
             <BigButton
               onClick={() => {

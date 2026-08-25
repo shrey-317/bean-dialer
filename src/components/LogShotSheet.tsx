@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { shotsRepo } from '../db/repo/shots.ts';
 import { adviceFor } from '../domain/advice.ts';
 import { toShotTimes, type TimerState } from '../domain/timer.ts';
-import type { CremaColor, Shot, TasteTag } from '../domain/types.ts';
+import type { CremaColor, PeakPressure, Shot, TasteTag } from '../domain/types.ts';
 import type { DialInContext } from '../hooks/data.ts';
 import { recordPulledDial } from '../hooks/actions.ts';
 import { BigButton, Button, Card, Chip, Field, Rating, SectionTitle, Stepper, TextInput, Toggle } from './ui.tsx';
@@ -35,6 +35,12 @@ const CREMA: { value: CremaColor; label: string }[] = [
   { value: 'blonding-early', label: 'Blonded early' },
 ];
 
+const PEAK_PRESSURE: { value: PeakPressure; label: string }[] = [
+  { value: 'under-5-bar', label: 'Under 5 bar' },
+  { value: '5-to-8-bar', label: '5–8 bar' },
+  { value: '9-bar', label: '9 bar' },
+];
+
 export function LogShotSheet({
   ctx,
   timer,
@@ -55,6 +61,7 @@ export function LogShotSheet({
   const [tempC, setTempC] = useState(session?.targets.tempC ?? 95);
   const [channeling, setChanneling] = useState(false);
   const [crema, setCrema] = useState<CremaColor | undefined>(undefined);
+  const [peakPressure, setPeakPressure] = useState<PeakPressure | undefined>(undefined);
   const [rating, setRating] = useState<number | undefined>(undefined);
   const [tags, setTags] = useState<TasteTag[]>([]);
   const [notes, setNotes] = useState('');
@@ -80,6 +87,7 @@ export function LogShotSheet({
         tasteTags: tags,
         pulledAt: Date.now(),
         ...(crema ? { cremaColor: crema } : {}),
+        ...(peakPressure ? { peakPressure } : {}),
         ...(rating !== undefined ? { rating } : {}),
         ...(notes.trim() ? { notes: notes.trim() } : {}),
         ...(discarded ? { discarded: true } : {}),
@@ -169,6 +177,21 @@ export function LogShotSheet({
               key={value}
               active={crema === value}
               onClick={() => setCrema((cur) => (cur === value ? undefined : value))}
+            >
+              {label}
+            </Chip>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <SectionTitle>Peak pressure</SectionTitle>
+        <div className="flex flex-wrap gap-2">
+          {PEAK_PRESSURE.map(({ value, label }) => (
+            <Chip
+              key={value}
+              active={peakPressure === value}
+              onClick={() => setPeakPressure((cur) => (cur === value ? undefined : value))}
             >
               {label}
             </Chip>

@@ -1,11 +1,19 @@
+import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { BeanForm } from '../components/BeanForm.tsx';
 import { DialVsTimeChart } from '../components/charts.tsx';
 import { BigButton, Button, Card, EmptyState, SectionTitle, StatTile } from '../components/ui.tsx';
-import { beansRepo, daysOffRoast } from '../db/repo/beans.ts';
+import { beanProcesses, beansRepo, daysOffRoast } from '../db/repo/beans.ts';
 import { brewRatio, sessionStats, shotTimeOnBasis, windowVerdict } from '../domain/metrics.ts';
-import type { Session, Shot } from '../domain/types.ts';
+import type { PeakPressure, Session, Shot } from '../domain/types.ts';
 import { startSession } from '../hooks/actions.ts';
 import { useBeanSessions, useBeans } from '../hooks/data.ts';
+
+const PEAK_PRESSURE_LABEL: Record<PeakPressure, string> = {
+  'under-5-bar': 'under 5 bar',
+  '5-to-8-bar': '5–8 bar',
+  '9-bar': '9 bar',
+};
 
 /** One bag: its sessions, its shots, and whether a dial was ever locked in for it. */
 export function BeanDetail() {
@@ -13,6 +21,8 @@ export function BeanDetail() {
   const beans = useBeans();
   const sessions = useBeanSessions(beanId);
   const navigate = useNavigate();
+  // Hooks run before the early returns below, so this can't move closer to where it's used.
+  const [buyingAgain, setBuyingAgain] = useState(false);
 
   if (beans === undefined || sessions === undefined) {
     return <p className="mt-8 text-center text-sm text-crust-500">Loading…</p>;
@@ -39,27 +49,58 @@ export function BeanDetail() {
         <Link to="/beans" className="text-xs text-crust-500 underline">
           ← Beans
         </Link>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() =>
-            void beansRepo.update(bean.id, {
-              state: bean.state === 'finished' ? 'active' : 'finished',
-            })
-          }
-        >
-          {bean.state === 'finished' ? 'Reopen bag' : 'Mark finished'}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={() => setBuyingAgain((b) => !b)}>
+            {buyingAgain ? 'Cancel' : 'Buy this again'}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              void beansRepo.update(bean.id, {
+                state: bean.state === 'finished' ? 'active' : 'finished',
+              })
+            }
+          >
+            {bean.state === 'finished' ? 'Reopen bag' : 'Mark finished'}
+          </Button>
+        </div>
       </div>
+
+      {buyingAgain ? (
+        <BeanForm
+          initial={{
+            roaster: bean.roaster,
+            name: bean.name,
+            ...(bean.origin ? { origin: bean.origin } : {}),
+            process: beanProcesses(bean),
+            ...(bean.roastLevel ? { roastLevel: bean.roastLevel } : {}),
+            ...(bean.tastingNotes ? { tastingNotes: bean.tastingNotes } : {}),
+            ...(bean.bagWeightG !== undefined ? { bagWeightG: bean.bagWeightG } : {}),
+            ...(bean.priceCents !== undefined ? { priceCents: bean.priceCents } : {}),
+          }}
+          submitLabel="Save new bag"
+          onDone={(newBean) => navigate(`/beans/${newBean.id}`)}
+        />
+      ) : null}
 
       <Card className="mb-4">
         <h1 className="text-xl font-bold text-crust-50">{bean.name}</h1>
         <p className="text-sm text-crust-400">
           {bean.roaster}
           {bean.origin ? ` · ${bean.origin}` : ''}
-          {bean.process ? ` · ${bean.process}` : ''}
+          {beanProcesses(bean).length > 0 ? ` · ${beanProcesses(bean).join(' + ')}` : ''}
           {bean.roastLevel ? ` · ${bean.roastLevel}` : ''}
         </p>
+        {bean.tastingNotes && bean.tastingNotes.length > 0 ? (
+          <p className="mt-1 flex flex-wrap gap-1.5 text-xs text-crust-500">
+            {bean.tastingNotes.map((note) => (
+              <span key={note} className="rounded-full border border-crust-700 px-2 py-0.5">
+                {note}
+              </span>
+            ))}
+          </p>
+        ) : null}
         <div className="mt-3 grid grid-cols-2 gap-2">
           <StatTile
             label="Off roast"
@@ -157,6 +198,7 @@ function ShotRow({ shot, session }: { shot: Shot; session: Session }) {
           {verdict === 'in-window' ? 'on target' : verdict}
         </Tag>
         {shot.channeling ? <Tag tone="bad">channelled</Tag> : null}
+        {shot.peakPressure ? <Tag tone="muted">{PEAK_PRESSURE_LABEL[shot.peakPressure]}</Tag> : null}
         {shot.discarded ? <Tag tone="muted">not counted</Tag> : null}
         {shot.rating !== undefined ? <Tag tone="muted">{shot.rating}/5</Tag> : null}
         {shot.tasteTags.map((t) => (

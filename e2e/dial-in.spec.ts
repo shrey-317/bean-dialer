@@ -161,3 +161,41 @@ test('a manually corrected dial becomes the working dial even without applying a
   await nav(page, 'Pull').click();
   await expect(page.getByText('Dial 13')).toBeVisible();
 });
+
+test('the recipe can be changed before pulling, and the change carries into the log sheet', async ({
+  page,
+}) => {
+  await nav(page, 'Pull').click();
+  await page.getByRole('button', { name: 'Edit recipe' }).click();
+
+  await page.getByLabel('Dose', { exact: true }).fill('20.0');
+  await page.getByLabel('Target yield', { exact: true }).fill('45.0');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+
+  await expect(page.getByText('20g → 45g', { exact: false })).toBeVisible();
+
+  await page.getByRole('button', { name: /^Start/ }).click();
+  await page.clock.runFor((PRE_INFUSION_SEC + 27) * 1000);
+  await page.getByRole('button', { name: 'Stop' }).click();
+
+  await expect(page.getByLabel('Dose', { exact: true })).toHaveValue('20.0');
+  await expect(page.getByLabel('Yield', { exact: true })).toHaveValue('45.0');
+});
+
+test('peak pressure can be recorded and shows up in the shot history', async ({ page }) => {
+  await nav(page, 'Pull').click();
+  await page.getByRole('button', { name: /^Start/ }).click();
+  await page.clock.runFor((PRE_INFUSION_SEC + 27) * 1000);
+  await page.getByRole('button', { name: 'Stop' }).click();
+
+  await expect(page.getByText('What the timer saw')).toBeVisible();
+  await page.getByLabel('Yield', { exact: true }).fill('40.0');
+  await page.getByRole('button', { name: '9 bar', exact: true }).click();
+  await page.getByRole('button', { name: 'Save shot' }).click();
+  await expect(page.getByRole('button', { name: 'Pull another' })).toBeVisible();
+  await settle(page);
+
+  await nav(page, 'Home').click();
+  await page.getByRole('link', { name: /All 1 shots?/ }).click();
+  await expect(page.getByText('9 bar', { exact: true })).toBeVisible();
+});

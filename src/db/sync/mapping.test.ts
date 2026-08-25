@@ -8,7 +8,7 @@ const bean: Bean = {
   dirty: 1,
   roaster: 'Joe Van Gogh',
   name: 'Ethiopia Sidama',
-  process: 'natural',
+  process: ['natural'],
   state: 'active',
 };
 
@@ -26,7 +26,7 @@ describe('toRemote', () => {
     expect(remote.data).toEqual({
       roaster: 'Joe Van Gogh',
       name: 'Ethiopia Sidama',
-      process: 'natural',
+      process: ['natural'],
       state: 'active',
     });
   });

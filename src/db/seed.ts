@@ -102,7 +102,7 @@ export async function seedIfEmpty(dbi: EspressoDB = db): Promise<{ seeded: boole
       roaster: 'Joe Van Gogh',
       name: 'Ethiopia Sidama',
       origin: 'Ethiopia',
-      process: 'natural',
+      process: ['natural'],
       roastLevel: 'medium-light',
       state: 'active',
     },

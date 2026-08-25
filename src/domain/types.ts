@@ -120,13 +120,20 @@ export interface Bean extends Synced {
   roaster: string;
   name: string;
   origin?: string;
-  process?: BeanProcess;
+  /**
+   * A bag is often more than one process — a co-ferment or a blend of lots. An array, not a
+   * single value, and never empty (omit the field instead of storing `[]`).
+   */
+  process?: BeanProcess[];
   roastLevel?: RoastLevel;
   /** ISO calendar date (yyyy-mm-dd) — a day, not an instant. Powers days-off-roast. */
   roastDate?: string;
   bagWeightG?: number;
   priceCents?: number;
   notes?: string;
+  /** The roaster's own tasting notes, e.g. ["black cherry", "chocolate", "brown sugar"]. Free
+   *  text, not a fixed list — there's no closed set of flavour words worth enumerating. */
+  tastingNotes?: string[];
   state: BeanState;
 }
 
@@ -189,6 +196,14 @@ export type TasteTag =
 
 export type CremaColor = 'pale' | 'honey' | 'dark' | 'blonding-early';
 
+/**
+ * Coarse, eyeballed peak pressure rather than a precise reading — this app has no gauge
+ * integration, so asking for more precision than "did the needle get to 9?" would just invite
+ * guessed decimals. `full` covers a normal 9-bar pump; `under` flags a machine or puck problem
+ * worth troubleshooting separately from the grind.
+ */
+export type PeakPressure = 'under-5-bar' | '5-to-8-bar' | '9-bar';
+
 export interface Shot extends Synced {
   sessionId: string;
   /** Grinder setting this shot was pulled at, in the grinder's own units. */
@@ -204,6 +219,8 @@ export interface Shot extends Synced {
   tempC: number;
   channeling: boolean;
   cremaColor?: CremaColor;
+  /** Peak gauge reading, if the machine has one and it was watched. */
+  peakPressure?: PeakPressure;
   /** 1–5, subjective overall. */
   rating?: number;
   tasteTags: TasteTag[];

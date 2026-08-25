@@ -3,7 +3,7 @@ import { sessionsRepo } from '../db/repo/sessions.ts';
 import { settingsRepo } from '../db/repo/settings.ts';
 import { shotsRepo } from '../db/repo/shots.ts';
 import { SEED_START_DIAL } from '../db/seed.ts';
-import type { Advice, Session, Shot } from '../domain/types.ts';
+import type { Advice, Session, Shot, Targets } from '../domain/types.ts';
 
 /**
  * Acting on the coach's advice.
@@ -46,6 +46,21 @@ export async function declineAdvice(latestShot?: Shot): Promise<void> {
  */
 export async function recordPulledDial(session: Session, dial: number): Promise<void> {
   if (dial !== session.currentDial) await sessionsRepo.setDial(session.id, dial);
+}
+
+/**
+ * Change the recipe — dose and/or target yield — for the rest of this session.
+ *
+ * `sessionsRepo.update` replaces whatever it's given wholesale, so a patch has to carry the
+ * *whole* targets object or it would silently drop `tempC`/`preInfusion`/the time window. The
+ * merge happens here, against the caller's already-loaded `session`, rather than in the repo
+ * layer, which would otherwise need to re-read the row just to merge into it.
+ */
+export async function updateRecipe(
+  session: Session,
+  patch: Partial<Pick<Targets, 'doseG' | 'yieldG'>>,
+): Promise<void> {
+  await sessionsRepo.update(session.id, { targets: { ...session.targets, ...patch } });
 }
 
 /**
