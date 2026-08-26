@@ -11,12 +11,12 @@ pre-seeded with it, so there is no configuration between installing and pulling 
 
 Two details of that setup drive real design decisions rather than being cosmetic.
 
-**On this DF54, a higher dial number is finer.** That is the opposite of most grinders and of most
-dial-in advice you'll read. So grind direction is a property of the grinder record
-(`dialDirection`), and every suggestion is expressed as "finer" or "coarser" and converted to a
-signed dial change through it. There is a test asserting a 22 s shot suggests **17.0** from 16.5,
-and a mirrored test on a `higher-is-coarser` grinder — because a coach that confidently tells you
-to turn the wrong way is worse than no coach.
+**On this DF54, a higher dial number is coarser** — the normal convention. Grind direction is
+still a property of the grinder record (`dialDirection`) rather than assumed, though: not every
+grinder runs this way, and every suggestion is expressed as "finer" or "coarser" and converted to
+a signed dial change through it. There is a test asserting a 22 s shot suggests **16.0** from
+16.5, and a mirrored test on a `higher-is-finer` grinder — because a coach that confidently tells
+you to turn the wrong way is worse than no coach.
 
 **A self-levelling tamper has no pressure override.** All flow correction is grind-based, so the
 engine never suggests tamping differently, and says as much when it diagnoses channelling.

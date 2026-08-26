@@ -30,10 +30,10 @@ export interface Synced {
 // ---------------------------------------------------------------------------
 
 /**
- * Which way the grind adjuster runs. This is not a detail: on the DF54 as used here a
- * *higher* number is *finer*, which is the opposite of most grinders and of most dial-in
- * advice found online. The advice engine resolves every suggestion through this field
- * rather than assuming a direction.
+ * Which way the grind adjuster runs. On the DF54 as used here, and on most grinders, a
+ * *higher* number is *coarser* — but it's a property of the specific grinder, not something
+ * to assume, so the advice engine resolves every suggestion through this field rather than
+ * hardcoding a direction.
  */
 export type DialDirection = 'higher-is-finer' | 'higher-is-coarser';
 
@@ -264,7 +264,7 @@ export type Confidence = 'low' | 'medium' | 'high';
 
 export interface Advice {
   action: AdviceAction;
-  /** One short line for the big card, e.g. "Grind finer — 16.5 → 17.0". */
+  /** One short line for the big card, e.g. "Grind finer — 16.5 → 16.0". */
   headline: string;
   /** Why, in plain language, referencing the actual numbers. */
   reason: string;

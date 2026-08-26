@@ -5,8 +5,8 @@ import { PRE_INFUSION_SEC, adviceHeadline, gotoFresh, nav, pullShot, settle } fr
  * End-to-end coverage of the dial-in loop.
  *
  * The direction assertions here are the ones that matter most: on the seeded DF54, **finer means
- * a higher dial number**. If someone "fixes" the engine to assume the usual convention, the
- * 22-second test below flips to 16.0 and fails — which is the point of it.
+ * a lower dial number** — the normal convention. If someone "fixes" the engine to assume the
+ * opposite, the 22-second test below flips to 17.0 and fails — which is the point of it.
  */
 
 test.beforeEach(async ({ page }) => {
@@ -30,20 +30,20 @@ test('first run is seeded with the documented setup', async ({ page }) => {
   await expect(adviceHeadline(page)).toContainText('Start at 16.5');
 });
 
-test('a fast shot is corrected finer, which on this grinder means a HIGHER dial', async ({ page }) => {
+test('a fast shot is corrected finer, which on this grinder means a LOWER dial', async ({ page }) => {
   await pullShot(page, { extractionSec: 22, yieldG: 40 });
 
   await expect(adviceHeadline(page)).toContainText('Grind finer');
-  // 16.5 → 17.0. A regression to 16.0 means the dial direction was hardcoded.
-  await expect(adviceHeadline(page)).toContainText('16.5 → 17.0');
-  await expect(page.getByRole('button', { name: 'Set dial to 17' })).toBeVisible();
+  // 16.5 → 16.0. A regression to 17.0 means the dial direction was hardcoded.
+  await expect(adviceHeadline(page)).toContainText('16.5 → 16.0');
+  await expect(page.getByRole('button', { name: 'Set dial to 16' })).toBeVisible();
 });
 
-test('a slow shot is corrected coarser, to a lower dial', async ({ page }) => {
+test('a slow shot is corrected coarser, to a higher dial', async ({ page }) => {
   await pullShot(page, { extractionSec: 34, yieldG: 40 });
 
   await expect(adviceHeadline(page)).toContainText('Grind coarser');
-  await expect(adviceHeadline(page)).toContainText('16.5 → 16.0');
+  await expect(adviceHeadline(page)).toContainText('16.5 → 17.0');
 });
 
 test('a badly missed yield gets no grind change, just a flow rate', async ({ page }) => {
@@ -57,14 +57,14 @@ test('a badly missed yield gets no grind change, just a flow rate', async ({ pag
 
 test('applying advice moves the dial and returns to the timer', async ({ page }) => {
   await pullShot(page, { extractionSec: 22, yieldG: 40 });
-  await page.getByRole('button', { name: 'Set dial to 17' }).click();
+  await page.getByRole('button', { name: 'Set dial to 16' }).click();
 
   // Straight back to a ready timer, now showing the accepted dial.
   await expect(page.getByRole('button', { name: /^Start/ })).toBeVisible();
-  await expect(page.getByText('Dial 17')).toBeVisible();
+  await expect(page.getByText('Dial 16')).toBeVisible();
 
   await nav(page, 'Home').click();
-  await expect(page.getByText('17.0', { exact: true })).toBeVisible();
+  await expect(page.getByText('16.0', { exact: true })).toBeVisible();
 });
 
 test('two matching on-target shots offer to lock the dial in', async ({ page }) => {

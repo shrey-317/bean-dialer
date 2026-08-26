@@ -10,7 +10,7 @@ const grinder: Gear = {
   isDefault: true,
   updatedAt: 0,
   dirty: 0,
-  spec: { dialMin: 0, dialMax: 60, dialStep: 0.5, dialDirection: 'higher-is-finer' },
+  spec: { dialMin: 0, dialMax: 60, dialStep: 0.5, dialDirection: 'higher-is-coarser' },
 };
 
 const tamper: Gear = {
@@ -141,7 +141,8 @@ describe('buildDialInContext', () => {
     expect(ctx.grinder?.name).toBe('DF54');
     expect(ctx.tamper?.name).toBe('Self-leveling tamper');
     expect(ctx.advice?.ruleId).toBe('time-too-fast');
-    expect(ctx.advice?.action.newDial).toBe(17);
+    // Finer means a lower dial on a higher-is-coarser grinder.
+    expect(ctx.advice?.action.newDial).toBe(16);
   });
 
   it('only includes shots belonging to the session, oldest first', () => {

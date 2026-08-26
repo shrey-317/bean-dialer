@@ -78,7 +78,7 @@ test.describe('sync between two devices', () => {
       await nav(hers.page, 'Home').click();
       await settle(hers.page);
       await expect(adviceHeadline(hers.page)).toContainText('Grind finer');
-      await expect(adviceHeadline(hers.page)).toContainText('16.5 → 17.0');
+      await expect(adviceHeadline(hers.page)).toContainText('16.5 → 16.0');
     } finally {
       await mine.context.close();
       await hers.context.close();
@@ -115,7 +115,7 @@ test.describe('sync between two devices', () => {
     try {
       // No project configured at all — the original offline-first behaviour must be untouched.
       await pullShot(device.page, { extractionSec: 22, yieldG: 40 });
-      await expect(adviceHeadline(device.page)).toContainText('16.5 → 17.0');
+      await expect(adviceHeadline(device.page)).toContainText('16.5 → 16.0');
 
       await nav(device.page, 'Setup').click();
       // Sync presents itself as optional rather than as something broken.

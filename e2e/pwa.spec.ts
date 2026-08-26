@@ -70,7 +70,7 @@ test('loads and logs a shot with the network offline', async ({ page, context })
 
   // And still fully usable: the data lives on the device, so nothing here needs a network.
   await pullShot(page, { extractionSec: 22, yieldG: 40 });
-  await expect(page.getByRole('heading', { level: 2 }).first()).toContainText('16.5 → 17.0');
+  await expect(page.getByRole('heading', { level: 2 }).first()).toContainText('16.5 → 16.0');
 
   await context.setOffline(false);
 });

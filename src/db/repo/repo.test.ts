@@ -259,8 +259,8 @@ describe('seed', () => {
     const grinder = gear.find((g) => g.id === SEED_IDS.grinder);
     expect(grinder && isGrinder(grinder)).toBe(true);
     if (grinder && isGrinder(grinder)) {
-      // The load-bearing detail: higher number is finer on this grinder.
-      expect(grinder.spec.dialDirection).toBe('higher-is-finer');
+      // The load-bearing detail: higher number is coarser on this grinder.
+      expect(grinder.spec.dialDirection).toBe('higher-is-coarser');
       expect(grinder.spec.dialStep).toBe(0.5);
     }
 

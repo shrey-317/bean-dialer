@@ -4,9 +4,9 @@ import { adviceFor, adviceForSession } from './advice.ts';
 import type { GrinderGear, Session, Shot, TamperGear, Targets } from './types.ts';
 
 /**
- * The grinder in these tests is the DF54 as actually used: **higher dial = finer**. Several
- * assertions below would pass with the sign flipped if the engine hardcoded a direction, so
- * a `higher-is-coarser` mirror case is included to pin it down.
+ * The grinder in these tests is the DF54 as actually used: **higher dial = coarser**, the
+ * normal convention. Several assertions below would pass with the sign flipped if the engine
+ * hardcoded a direction, so a `higher-is-finer` mirror case is included to pin it down.
  */
 const df54: GrinderGear = {
   id: 'grinder-1',
@@ -19,7 +19,7 @@ const df54: GrinderGear = {
     dialMin: 0,
     dialMax: 60,
     dialStep: 0.5,
-    dialDirection: 'higher-is-finer',
+    dialDirection: 'higher-is-coarser',
     burrType: 'flat',
     antiStatic: 'plasma',
   },
@@ -29,7 +29,7 @@ const invertedGrinder: GrinderGear = {
   ...df54,
   id: 'grinder-2',
   name: 'Generic',
-  spec: { ...df54.spec, dialDirection: 'higher-is-coarser' },
+  spec: { ...df54.spec, dialDirection: 'higher-is-finer' },
 };
 
 const selfLevelingTamper: TamperGear = {
@@ -67,17 +67,17 @@ function shot(over: Partial<Shot> = {}): Shot {
 const base = { targets, grinder: df54, tamper: selfLevelingTamper, history: [] as Shot[] };
 
 describe('grind direction', () => {
-  it('goes finer by raising the dial on a higher-is-finer grinder', () => {
+  it('goes finer by LOWERING the dial on a higher-is-coarser grinder', () => {
     const advice = adviceFor({ ...base, shot: shot({ extractionSec: 22 }) });
 
     expect(advice.ruleId).toBe('time-too-fast');
     expect(advice.action.kind).toBe('grind');
-    expect(advice.action.newDial).toBe(17);
-    expect(advice.action.deltaDial).toBe(0.5);
+    expect(advice.action.newDial).toBe(16);
+    expect(advice.action.deltaDial).toBe(-0.5);
     expect(advice.headline).toContain('finer');
   });
 
-  it('goes finer by LOWERING the dial on a higher-is-coarser grinder', () => {
+  it('goes finer by RAISING the dial on a higher-is-finer grinder', () => {
     const advice = adviceFor({
       ...base,
       grinder: invertedGrinder,
@@ -85,15 +85,15 @@ describe('grind direction', () => {
     });
 
     expect(advice.headline).toContain('finer');
-    expect(advice.action.newDial).toBe(16);
-    expect(advice.action.deltaDial).toBe(-0.5);
+    expect(advice.action.newDial).toBe(17);
+    expect(advice.action.deltaDial).toBe(0.5);
   });
 
-  it('goes coarser by lowering the dial when the shot is slow', () => {
+  it('goes coarser by raising the dial when the shot is slow', () => {
     const advice = adviceFor({ ...base, shot: shot({ extractionSec: 34 }) });
 
     expect(advice.ruleId).toBe('time-too-slow');
-    expect(advice.action.newDial).toBe(16);
+    expect(advice.action.newDial).toBe(17);
     expect(advice.headline).toContain('coarser');
   });
 });
@@ -101,13 +101,13 @@ describe('grind direction', () => {
 describe('step magnitude', () => {
   it('takes one step for a near miss', () => {
     const advice = adviceFor({ ...base, shot: shot({ extractionSec: 23 }) });
-    expect(advice.action.newDial).toBe(17);
+    expect(advice.action.newDial).toBe(16);
   });
 
   it('takes two steps when the shot is nowhere near the window', () => {
     // 40 s against a 25–30 s window is 10 s slow: walking 0.5 at a time wastes coffee.
     const advice = adviceFor({ ...base, shot: shot({ extractionSec: 40 }) });
-    expect(advice.action.newDial).toBe(15.5);
+    expect(advice.action.newDial).toBe(17.5);
   });
 
   it('snaps results to the grinder step and never lands between clicks', () => {
@@ -117,13 +117,14 @@ describe('step magnitude', () => {
   });
 
   it('refuses to step past the end of the grinder range', () => {
-    const atMax = adviceFor({
+    // Finer means a lower dial here, so the finest possible setting is dialMin, not dialMax.
+    const atMin = adviceFor({
       ...base,
-      shot: shot({ dial: 60, extractionSec: 20 }),
+      shot: shot({ dial: 0, extractionSec: 20 }),
     });
-    expect(atMax.action.kind).toBe('hold');
-    expect(atMax.headline).toContain('finest');
-    expect(atMax.reason).toContain("can't go finer");
+    expect(atMin.action.kind).toBe('hold');
+    expect(atMin.headline).toContain('finest');
+    expect(atMin.reason).toContain("can't go finer");
   });
 });
 
@@ -171,7 +172,7 @@ describe('channeling and puck prep', () => {
     const advice = adviceFor({ ...base, shot: shot({ extractionSec: 21, channeling: true }) });
 
     expect(advice.ruleId).toBe('time-too-fast');
-    expect(advice.action.newDial).toBe(17);
+    expect(advice.action.newDial).toBe(16);
     expect(advice.notes.join(' ')).toContain('shortcut');
   });
 
@@ -199,7 +200,7 @@ describe('taste tie-breakers', () => {
     const advice = adviceFor({ ...base, shot: shot({ tasteTags: ['sour'] }) });
 
     expect(advice.ruleId).toBe('taste-sour');
-    expect(advice.action.newDial).toBe(17);
+    expect(advice.action.newDial).toBe(16);
     // Temperature is offered as an alternative, never as the primary move.
     expect(advice.notes.join(' ')).toContain('96 °C');
   });
@@ -208,7 +209,7 @@ describe('taste tie-breakers', () => {
     const advice = adviceFor({ ...base, shot: shot({ tasteTags: ['bitter'] }) });
 
     expect(advice.ruleId).toBe('taste-bitter');
-    expect(advice.action.newDial).toBe(16);
+    expect(advice.action.newDial).toBe(17);
     expect(advice.notes.join(' ')).toContain('94 °C');
   });
 
@@ -243,8 +244,9 @@ describe('oscillation guard', () => {
     });
 
   it('stops stepping when the last suggestions alternated direction', () => {
-    const history = [withSuggestion('s1', +0.5), withSuggestion('s2', -0.5)];
-    // A fast shot now would step +0.5 again — the third alternation.
+    const history = [withSuggestion('s1', -0.5), withSuggestion('s2', +0.5)];
+    // A fast shot now would step -0.5 again (finer is lower on this grinder) — the third
+    // alternation.
     const advice = adviceFor({ ...base, history, shot: shot({ extractionSec: 23 }) });
 
     expect(advice.ruleId).toBe('oscillation');
@@ -253,11 +255,11 @@ describe('oscillation guard', () => {
   });
 
   it('keeps stepping when suggestions have been consistent', () => {
-    const history = [withSuggestion('s1', +0.5), withSuggestion('s2', +0.5)];
+    const history = [withSuggestion('s1', -0.5), withSuggestion('s2', -0.5)];
     const advice = adviceFor({ ...base, history, shot: shot({ extractionSec: 23 }) });
 
     expect(advice.ruleId).toBe('time-too-fast');
-    expect(advice.action.newDial).toBe(17);
+    expect(advice.action.newDial).toBe(16);
   });
 });
 
@@ -354,7 +356,7 @@ describe('adviceForSession', () => {
     const advice = adviceForSession(session, shots, df54, selfLevelingTamper);
 
     expect(advice.ruleId).toBe('time-too-fast');
-    expect(advice.action.newDial).toBe(17);
+    expect(advice.action.newDial).toBe(16);
   });
 
   it('skips discarded shots when picking the latest', () => {
@@ -363,6 +365,6 @@ describe('adviceForSession', () => {
       shot({ id: 'flush', extractionSec: 5, discarded: true, pulledAt: 200 }),
     ];
     const advice = adviceForSession(session, shots, df54, selfLevelingTamper);
-    expect(advice.action.newDial).toBe(17);
+    expect(advice.action.newDial).toBe(16);
   });
 });

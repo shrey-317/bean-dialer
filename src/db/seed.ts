@@ -11,8 +11,9 @@ import { db, type EspressoDB } from './schema.ts';
  * Turin Legato V2 + DF54 + self-leveling tamper. Two of these values are load-bearing
  * rather than cosmetic:
  *
- * - `dialDirection: 'higher-is-finer'` on the DF54. Higher number = finer here, the
- *   opposite of most grinders. Everything the advice engine says depends on it.
+ * - `dialDirection: 'higher-is-coarser'` on the DF54 — the normal convention. The advice
+ *   engine still resolves every suggestion through this field rather than assuming a
+ *   direction, so a grinder that really is the exception just needs this one value changed.
  * - `pressureAdjustable: false` on the tamper. A self-leveling tamper gives consistent
  *   contact and no manual override, so all flow correction is grind-based and the engine
  *   must never suggest tamping differently.
@@ -62,12 +63,13 @@ export async function seedIfEmpty(dbi: EspressoDB = db): Promise<{ seeded: boole
         dialMin: 0,
         dialMax: 60,
         dialStep: 0.5,
-        // Higher number is finer on this grinder. Do not "fix" this without re-testing.
-        dialDirection: 'higher-is-finer',
+        // The normal convention: a higher number is coarser. Do not "fix" this without
+        // re-testing against the real grinder.
+        dialDirection: 'higher-is-coarser',
         burrType: 'flat',
         antiStatic: 'plasma',
       },
-      notes: 'Plasma/ionizer anti-static (v3/v4). Higher dial number = finer.',
+      notes: 'Plasma/ionizer anti-static (v3/v4). Higher dial number = coarser.',
     },
     dbi,
   );
