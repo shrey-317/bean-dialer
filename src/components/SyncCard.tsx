@@ -94,7 +94,10 @@ function StatusPill({ status }: { status: ReturnType<typeof useSyncStatus> }) {
         : 'border-good text-good';
 
   return (
-    <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider ${tone}`}>
+    <span
+      role="status"
+      className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider ${tone}`}
+    >
       {label}
     </span>
   );

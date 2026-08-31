@@ -36,10 +36,23 @@ async function connectSync(
   await expect(page.getByText(email)).toBeVisible();
 }
 
-/** Waits for the status pill to report a completed sync. */
+/**
+ * Waits for the status pill to report a completed sync.
+ *
+ * Scoped to the pill's `role="status"`, filtered by its text, rather than a bare `getByText` —
+ * the Setup screen also shows a "<host> · last synced …" line once a sync has ever completed,
+ * which contains the same "synced …" substring and would otherwise make a plain `getByText`
+ * locator match two elements. `.filter({ hasText })` rather than `getByRole`'s own `name` option:
+ * per the ARIA spec `status` takes its accessible *name* from `aria-label`, not from its text
+ * content, so `name` matching here would find nothing even once the pill says the right thing.
+ */
 async function syncSettled(page: Page): Promise<void> {
   await page.getByRole('button', { name: /^Sync now|^Syncing/ }).click();
-  await expect(page.getByText(/synced (just now|\d+ min ago)/i)).toBeVisible({ timeout: 15_000 });
+  await expect(
+    page.getByRole('status').filter({ hasText: /synced (just now|\d+ min ago)/i }),
+  ).toBeVisible({
+    timeout: 15_000,
+  });
 }
 
 async function openDevice(browser: Browser) {

@@ -81,3 +81,21 @@ test('buying a bag again pre-fills roaster and process but asks for a fresh roas
   await expect(page.getByText('Joe Van Gogh', { exact: false })).toBeVisible();
   expect(page.url()).not.toBe(originalUrl);
 });
+
+test('scanning a bag offers a photo capture entry point', async ({ page }) => {
+  // What OCR actually reads off a real photo isn't something to assert on in CI — that needs a
+  // real image and a real network fetch of Tesseract's model, and is exactly the kind of thing
+  // this project treats as a manual, on-device check (same as the timer's real pre-infusion
+  // behaviour). What's tested here is that the entry point exists and is wired up: tapping it
+  // shows a capture control rather than silently doing nothing, and backing out returns cleanly
+  // to the bean list. `platform/ocr.ts`'s parsing heuristics carry their own unit coverage.
+  await nav(page, 'Beans').click();
+  await page.getByRole('button', { name: 'Scan a bag' }).click();
+
+  await expect(page.getByRole('button', { name: 'Take a photo' })).toBeVisible();
+  await expect(page.locator('input[type="file"]')).toBeAttached();
+
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('button', { name: 'Take a photo' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Scan a bag' })).toBeVisible();
+});

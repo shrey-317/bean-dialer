@@ -40,8 +40,11 @@ export function BeanForm({
   const [roaster, setRoaster] = useState(initial?.roaster ?? '');
   const [name, setName] = useState(initial?.name ?? '');
   const [origin, setOrigin] = useState(initial?.origin ?? '');
+  // A prefilled form defaults to today when nothing more specific is known (saves a tap for the
+  // common case of logging a bag the day it arrives) — but a genuinely known date, like one a
+  // bag scan actually read off the label, always wins over that default.
   const [roastDate, setRoastDate] = useState(
-    initial ? new Date().toISOString().slice(0, 10) : '',
+    initial?.roastDate ?? (initial ? new Date().toISOString().slice(0, 10) : ''),
   );
   const [process, setProcess] = useState<BeanProcess[]>(initial?.process ?? []);
   const [roastLevel, setRoastLevel] = useState<RoastLevel | undefined>(initial?.roastLevel);
