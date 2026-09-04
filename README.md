@@ -37,21 +37,52 @@ first drip is normal here rather than alarming.
 
 The engine (`src/domain/advice.ts`) is a pure function. The first rule that fires wins.
 
-1. **Yield gate.** More than ±2 g off target and the elapsed time says as much about the extra
+1. **Dose gate.** More than ±0.3 g off target and the shot isn't comparable to one at the target
+   dose — more or less coffee changes puck resistance before the grind gets a say. Tighter than
+   the yield gate below, since dose is scale-weighed rather than eyeballed mid-pour. Runs first:
+   dose is the more upstream variable, so it's the more useful one to fix when both are off.
+2. **Yield gate.** More than ±2 g off target and the elapsed time says as much about the extra
    liquid as about the grind. It reports flow rate in g/s and asks for a clean shot instead of
    changing anything.
-2. **Time correction.** Below the window → finer; above → coarser. One step for a normal miss,
+3. **Time correction.** Below the window → finer; above → coarser. One step for a normal miss,
    more when the shot is nowhere near, clamped to the grinder's range and snapped to its steps.
-3. **Oscillation guard.** If suggestions have been alternating finer/coarser, it stops stepping
+   Peak pressure, flow rate and bean freshness all layer in here as *notes*, never as a change to
+   the action itself — see below.
+4. **Oscillation guard.** If suggestions have been alternating finer/coarser, it stops stepping
    and asks for two pulls at the same setting — the real answer is between two clicks.
-4. **Channelling.** With the time already on target, an uneven puck is the remaining problem, so
+5. **Channelling.** With the time already on target, an uneven puck is the remaining problem, so
    the grind stays put and the advice is about distribution.
-5. **Lock-in.** Two consecutive in-window shots at the same dial, with matching yields and within
-   2 s of each other, and it offers to lock the dial in. One good shot is not a dial.
-6. **Taste tie-breaker.** Only once the numbers are good: sour/thin → finer, bitter/harsh →
+6. **Lock-in.** Two consecutive in-window shots at the same dial, with matching yields and within
+   2 s of each other, and it offers to lock the dial in. One good shot is not a dial — and a shot
+   you rated 2/5 or lower doesn't count as one either, no matter how clean the numbers are.
+7. **Taste tie-breaker.** Only once the numbers are good: sour/thin → finer, bitter/harsh →
    coarser, with temperature offered as the alternative rather than the primary move.
 
 Discarded shots (flushes, spills) stay in the log and are excluded from advice and statistics.
+
+### What corroborates the time-based call, and what deliberately doesn't
+
+A fast or slow verdict is still the primary signal, but a few other readings sharpen or complicate
+it — as *notes* on that same call, never as a rule of their own:
+
+- **Peak pressure.** Low pressure (under 5 bar) on a fast shot corroborates "too coarse" and lifts
+  confidence. Low pressure on a *slow* shot is the more useful reading: that combination is
+  physically odd for a genuinely fine grind, and points at an uneven or blocked puck rather than
+  the dial. What pressure can't do is tell a channelled puck apart from a truly coarse one — both
+  read as low resistance on the gauge — so it's never used to relabel a shot as channelling; that
+  stays reserved for what you actually saw.
+- **Flow rate.** Above roughly 2.5 g/s, taste tends to drop off, per Lance Hedrick's published
+  extraction testing. Noted on a fast shot, never a gate — deliberately fast styles (turbo shots)
+  run well above this on purpose.
+- **Bean freshness.** Under about 5 days off roast, a bean is still degassing enough to run a shot
+  fast on its own, independent of the grind. Surfaces as a caveat on a fast-shot correction, not a
+  reason to withhold it — the correction is probably still right, it just may need rechecking once
+  the bag settles.
+- **Crema colour is not read at all.** It correlates far more with bean freshness and roast degree
+  than with extraction quality — James Hoffmann has demonstrated a badly under-extracted shot with
+  thick "textbook" crema and a well-extracted one with much less. Acting on it here would mean
+  acting on the wrong variable, not a weaker version of a right one. It's still logged, for your
+  own notes, but the coach never reads it.
 
 ## Data
 

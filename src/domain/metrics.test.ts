@@ -4,6 +4,7 @@ import {
   brewRatio,
   flowRate,
   isConverged,
+  isDoseUsable,
   isYieldUsable,
   secondsOutsideWindow,
   sessionStats,
@@ -92,6 +93,15 @@ describe('yield tolerance', () => {
   });
 });
 
+describe('dose tolerance', () => {
+  it('accepts ±0.3 g and rejects beyond it — tighter than the yield tolerance', () => {
+    expect(isDoseUsable({ doseG: 18.2 }, targets)).toBe(true);
+    expect(isDoseUsable({ doseG: 17.8 }, targets)).toBe(true);
+    expect(isDoseUsable({ doseG: 18.5 }, targets)).toBe(false);
+    expect(isDoseUsable({ doseG: 17.5 }, targets)).toBe(false);
+  });
+});
+
 describe('sessionStats', () => {
   it('summarises countable shots and excludes discarded ones', () => {
     const shots = [
@@ -152,6 +162,19 @@ describe('isConverged', () => {
   it('can be asked for three confirming shots instead of two', () => {
     expect(isConverged([at('a', 27), at('b', 28)], targets, 3)).toBe(false);
     expect(isConverged([at('a', 27), at('b', 28), at('c', 27)], targets, 3)).toBe(true);
+  });
+
+  it('refuses to converge when either shot was rated 2 or lower', () => {
+    expect(isConverged([at('a', 27, { rating: 2 }), at('b', 28)], targets)).toBe(false);
+    expect(isConverged([at('a', 27), at('b', 28, { rating: 1 })], targets)).toBe(false);
+  });
+
+  it('is not blocked by an un-rated shot', () => {
+    expect(isConverged([at('a', 27, { rating: undefined }), at('b', 28)], targets)).toBe(true);
+  });
+
+  it('converges fine on a shot rated 3 or higher', () => {
+    expect(isConverged([at('a', 27, { rating: 3 }), at('b', 28, { rating: 5 })], targets)).toBe(true);
   });
 });
 

@@ -69,6 +69,26 @@ export function isYieldUsable(
   return Math.abs(yieldDeviation(shot, targets)) <= toleranceG;
 }
 
+/** Signed grams away from the target dose. Positive = overdosed. */
+export function doseDeviation(shot: Pick<Shot, 'doseG'>, targets: Pick<Targets, 'doseG'>): number {
+  return shot.doseG - targets.doseG;
+}
+
+/**
+ * How far off target the dose may be before elapsed time stops being comparable. Tighter than
+ * the yield tolerance: dose is set on a scale before the shot ever starts, so there's less
+ * excuse for it drifting than yield has (which is often read live, mid-pour).
+ */
+export const DOSE_TOLERANCE_G = 0.3;
+
+export function isDoseUsable(
+  shot: Pick<Shot, 'doseG'>,
+  targets: Pick<Targets, 'doseG'>,
+  toleranceG: number = DOSE_TOLERANCE_G,
+): boolean {
+  return Math.abs(doseDeviation(shot, targets)) <= toleranceG;
+}
+
 export type WindowVerdict = 'fast' | 'in-window' | 'slow' | 'unknown';
 
 export function windowVerdict(seconds: number | undefined, targets: Targets): WindowVerdict {
@@ -142,7 +162,10 @@ export function sessionStats(shots: Shot[], targets: Targets): SessionStats {
  *
  * Requires the last `required` countable shots to share a dial, land in the window, hold a
  * usable yield, and sit within `maxSpreadSec` of each other. Deliberately not satisfied by a
- * single good shot — one lucky pull is not a dial, which is why the default is 2.
+ * single good shot — one lucky pull is not a dial, which is why the default is 2. Also refuses
+ * to converge if either shot carries a rating of 2 or below: a shot you actively disliked
+ * doesn't confirm a dial no matter how clean the numbers are, and an un-rated shot doesn't
+ * block anything (absence of a rating isn't a bad one).
  */
 export function isConverged(
   shots: Shot[],
@@ -157,6 +180,7 @@ export function isConverged(
   const dials = new Set(recent.map((s) => s.dial));
   if (dials.size !== 1) return false;
   if (!recent.every((s) => isYieldUsable(s, targets))) return false;
+  if (recent.some((s) => s.rating !== undefined && s.rating <= 2)) return false;
 
   const times = recent
     .map((s) => shotTimeOnBasis(s, targets.timingBasis))

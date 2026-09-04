@@ -52,7 +52,7 @@ export function LogShotSheet({
   onSaved: (shotId: string) => void;
   onDiscardTimer: () => void;
 }) {
-  const { session, grinder, tamper, shots } = ctx;
+  const { session, grinder, tamper, bean, shots } = ctx;
   const times = toShotTimes(timer);
 
   const [doseG, setDoseG] = useState(session?.targets.doseG ?? 18);
@@ -102,6 +102,7 @@ export function LogShotSheet({
             targets: session!.targets,
             grinder: grinder!,
             ...(tamper ? { tamper } : {}),
+            ...(bean ? { bean } : {}),
             history: shots.filter((s) => !s.discarded),
           });
 

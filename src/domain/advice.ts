@@ -1,7 +1,11 @@
+import { daysOffRoast, restVerdict } from '../db/repo/beans.ts';
 import { dialDelta, snapDial } from '../db/repo/gear.ts';
 import {
+  DOSE_TOLERANCE_G,
+  doseDeviation,
   flowRate,
   isConverged,
+  isDoseUsable,
   isYieldUsable,
   secondsOutsideWindow,
   shotTimeOnBasis,
@@ -12,6 +16,7 @@ import {
 import type {
   Advice,
   AdviceRuleId,
+  Bean,
   GrinderGear,
   Session,
   Shot,
@@ -30,7 +35,8 @@ import type {
  *
  * - **Direction is never assumed.** Every grind change is expressed as "finer" or "coarser"
  *   and converted to a signed dial delta by `dialDelta`, which reads the grinder's
- *   `dialDirection`. On the DF54 used here, finer means a *higher* number.
+ *   `dialDirection`. On the DF54 used here, finer means a *lower* number — the normal
+ *   convention, not the exception some grinders are.
  *
  * - **Tamp pressure is never suggested** when the tamper reports
  *   `pressureAdjustable: false`. A self-leveling tamper has no such control, so advising it
@@ -38,6 +44,16 @@ import type {
  *
  * - **One change at a time.** The engine only ever proposes a single primary action, because
  *   two simultaneous changes make the next shot uninterpretable.
+ *
+ * - **A secondary signal corroborates or complicates; it never overrides.** Peak pressure,
+ *   flow rate and bean freshness all show up only as *notes* on the primary time-based call
+ *   (see the "time out of window" rule) — never as their own rule that changes the action.
+ *   Peak pressure especially: a channelled puck and a genuinely too-coarse one both read as
+ *   low resistance on the gauge, so pressure alone can't tell them apart, and pretending it
+ *   can is exactly the kind of confidently-wrong advice this engine is built to avoid. Crema
+ *   colour is deliberately not read here at all — it tracks bean freshness and roast degree
+ *   far more than it tracks extraction quality, so treating it as a quality signal would be
+ *   acting on the wrong variable, not a weaker version of a right one.
  */
 
 /** Rules are evaluated in this order; the first that fires wins. */
@@ -46,12 +62,21 @@ export interface AdviceInput {
   targets: Targets;
   grinder: GrinderGear;
   tamper?: TamperGear;
+  /** For the freshness caveat on a fast shot. Absent bean, or absent roastDate, just skips it. */
+  bean?: Pick<Bean, 'roastDate'>;
   /** Prior countable shots for this session, oldest first, excluding `shot`. */
   history: Shot[];
 }
 
 /** Seconds after pre-infusion ends that count as "dripping suspiciously early". */
 export const EARLY_DRIP_SEC = 3;
+
+/**
+ * Above roughly this flow rate, taste drops off — per Lance Hedrick's published extraction
+ * testing. Informational only: some deliberate styles (turbo shots) run well above this on
+ * purpose, so it's a note on a fast shot's reasoning, never a gate or a grind override.
+ */
+export const FAST_FLOW_RATE_G_S = 2.5;
 
 function formatDial(value: number, step: number): string {
   const decimals = (String(step).split('.')[1] ?? '').length;
@@ -141,7 +166,7 @@ function isOscillating(history: Shot[], proposedDelta: number): boolean {
 }
 
 export function adviceFor(input: AdviceInput): Advice {
-  const { shot, targets, grinder, tamper, history } = input;
+  const { shot, targets, grinder, tamper, bean, history } = input;
   const spec = grinder.spec;
   const seconds = shotTimeOnBasis(shot, targets.timingBasis);
   const basisLabel =
@@ -161,6 +186,29 @@ export function adviceFor(input: AdviceInput): Advice {
       confidence: 'low',
       notes: ['Log the next pull with the timer running from the moment you hit the button.'],
       ruleId: 'yield-out-of-range',
+    };
+  }
+
+  // --- Rule: dose gate -------------------------------------------------------
+  // A shot dosed away from the target isn't comparable to one pulled at the target dose: more
+  // or less coffee changes puck resistance, and therefore timing, before the grind gets a say.
+  // Runs before the yield gate — dose is the more upstream variable, so it's the more useful
+  // thing to fix first when both are off.
+  if (!isDoseUsable(shot, targets)) {
+    const dev = doseDeviation(shot, targets);
+    const over = dev > 0;
+    return {
+      action: { kind: 'reshoot' },
+      headline: `Dose was ${over ? 'over' : 'under'} by ${fmt(Math.abs(dev))} g — pull another`,
+      reason:
+        `You put in ${fmt(shot.doseG)} g instead of ${fmt(targets.doseG)} g, which is more than ` +
+        `${DOSE_TOLERANCE_G} g off — enough on its own to change how long this shot should take, ` +
+        `so the ${fmt(seconds)} s doesn't say anything reliable about the grind yet.`,
+      confidence: 'high',
+      notes: [
+        `Reweigh to ${fmt(targets.doseG)} g and keep the grind at ${formatDial(shot.dial, spec.dialStep)}.`,
+      ],
+      ruleId: 'dose-out-of-range',
     };
   }
 
@@ -216,6 +264,40 @@ export function adviceFor(input: AdviceInput): Advice {
       );
     }
 
+    // Peak pressure corroborates or complicates the timing read, but never overrides the
+    // manual channelling call — pressure alone can't tell "too coarse" apart from
+    // "channelled", since a channel is itself a low-resistance path and reads the same way on
+    // the gauge. Low pressure on a genuinely fine (slow) grind is the more useful case: that
+    // combination is physically odd, and points away from the grind entirely.
+    const lowPressure = shot.peakPressure === 'under-5-bar';
+    let pressureConfirmsFast = false;
+    if (lowPressure && verdict === 'fast') {
+      notes.push(
+        'Peak pressure never got above 5 bar, which fits low resistance from the grind — consistent with running fast.',
+      );
+      pressureConfirmsFast = true;
+    } else if (lowPressure && verdict === 'slow') {
+      notes.push(
+        "Pressure never built past 5 bar even though this ran slow — that's unusual for a genuinely fine grind, and points more at an uneven or blocked puck than at the dial. Worth checking distribution and the basket before stepping again.",
+      );
+    }
+
+    if (verdict === 'fast') {
+      const rate = flowRate(shot);
+      if (rate > FAST_FLOW_RATE_G_S) {
+        notes.push(
+          `Flow rate was ${fmt(rate, 2)} g/s — taste tends to drop off above roughly ${FAST_FLOW_RATE_G_S} g/s, so this shot may show that before the next one even confirms the grind change.`,
+        );
+      }
+
+      const days = bean ? daysOffRoast(bean) : undefined;
+      if (restVerdict(days) === 'too-fresh') {
+        notes.push(
+          `This bag is only ${days} day${days === 1 ? '' : 's'} off roast — beans this fresh are still degassing, which can push a shot fast on its own, independent of the grind. Worth re-checking this dial again once it's past about 5 days.`,
+        );
+      }
+    }
+
     const proposedDelta = dialDelta(direction, steps, spec);
     if (isOscillating(history, proposedDelta)) {
       const held = formatDial(shot.dial, spec.dialStep);
@@ -247,7 +329,7 @@ export function adviceFor(input: AdviceInput): Advice {
       verdict === 'fast' ? 'time-too-fast' : 'time-too-slow',
       reason,
       notes,
-      Math.abs(secondsOff) >= 2 ? 'high' : 'medium',
+      pressureConfirmsFast || Math.abs(secondsOff) >= 2 ? 'high' : 'medium',
     );
   }
 
@@ -356,6 +438,7 @@ export function adviceForSession(
   shots: Shot[],
   grinder: GrinderGear,
   tamper?: TamperGear,
+  bean?: Pick<Bean, 'roastDate'>,
 ): Advice {
   const countable = shots.filter((s) => !s.discarded);
   const latest = countable[countable.length - 1];
@@ -379,6 +462,7 @@ export function adviceForSession(
     targets: session.targets,
     grinder,
     ...(tamper ? { tamper } : {}),
+    ...(bean ? { bean } : {}),
     history: countable.slice(0, -1),
   });
 }

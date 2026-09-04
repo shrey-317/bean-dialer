@@ -66,6 +66,6 @@ export function buildDialInContext({
     ...(tamper ? { tamper } : {}),
     shots: sessionShots,
     // Without a grinder there is no dial to advise on — that session is broken, not just empty.
-    ...(grinder ? { advice: adviceForSession(session, sessionShots, grinder, tamper) } : {}),
+    ...(grinder ? { advice: adviceForSession(session, sessionShots, grinder, tamper, bean) } : {}),
   };
 }

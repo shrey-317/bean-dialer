@@ -325,6 +325,115 @@ describe('timing basis', () => {
   });
 });
 
+describe('dose gate', () => {
+  it('refuses to change the grind when the dose overshot the tolerance', () => {
+    const advice = adviceFor({ ...base, shot: shot({ extractionSec: 22, doseG: 18.5 }) });
+
+    expect(advice.ruleId).toBe('dose-out-of-range');
+    expect(advice.action.kind).toBe('reshoot');
+    expect(advice.action.newDial).toBeUndefined();
+    expect(advice.headline).toContain('over');
+  });
+
+  it('refuses to change the grind when the dose undershot the tolerance', () => {
+    const advice = adviceFor({ ...base, shot: shot({ extractionSec: 22, doseG: 17.5 }) });
+
+    expect(advice.ruleId).toBe('dose-out-of-range');
+    expect(advice.headline).toContain('under');
+  });
+
+  it('accepts a dose inside tolerance and judges on time', () => {
+    const advice = adviceFor({ ...base, shot: shot({ extractionSec: 22, doseG: 18.2 }) });
+    expect(advice.ruleId).toBe('time-too-fast');
+  });
+
+  it('runs before the yield gate — dose is the more upstream variable', () => {
+    // Both dose and yield are off; dose should be the one reported.
+    const advice = adviceFor({
+      ...base,
+      shot: shot({ extractionSec: 22, doseG: 18.6, yieldG: 52 }),
+    });
+    expect(advice.ruleId).toBe('dose-out-of-range');
+  });
+});
+
+describe('peak pressure as a corroborating note', () => {
+  it('corroborates a fast shot and lifts confidence to high', () => {
+    const advice = adviceFor({
+      ...base,
+      shot: shot({ extractionSec: 23, peakPressure: 'under-5-bar' }),
+    });
+
+    expect(advice.ruleId).toBe('time-too-fast');
+    expect(advice.confidence).toBe('high');
+    expect(advice.notes.join(' ')).toContain('never got above 5 bar');
+  });
+
+  it('flags low pressure on a slow shot as a puck problem, not a reason to distrust the grind call', () => {
+    const advice = adviceFor({
+      ...base,
+      shot: shot({ extractionSec: 34, peakPressure: 'under-5-bar' }),
+    });
+
+    expect(advice.ruleId).toBe('time-too-slow');
+    expect(advice.notes.join(' ')).toContain('unusual for a genuinely fine grind');
+  });
+
+  it('never relabels a shot as channeling based on pressure alone', () => {
+    const advice = adviceFor({
+      ...base,
+      shot: shot({ extractionSec: 23, peakPressure: 'under-5-bar' }),
+    });
+    expect(advice.ruleId).not.toBe('channeling');
+  });
+});
+
+describe('flow rate as a corroborating note', () => {
+  it('notes a high flow rate on a fast shot', () => {
+    const advice = adviceFor({
+      ...base,
+      shot: shot({ extractionSec: 14, yieldG: 41 }),
+    });
+
+    expect(advice.ruleId).toBe('time-too-fast');
+    expect(advice.notes.join(' ')).toContain('g/s');
+  });
+
+  it('says nothing about flow rate when it is under the threshold', () => {
+    const advice = adviceFor({ ...base, shot: shot({ extractionSec: 22 }) });
+    expect(advice.notes.join(' ')).not.toContain('Flow rate was');
+  });
+});
+
+describe('bean freshness as a corroborating note', () => {
+  it('notes a too-fresh bag as a caveat on a fast-shot correction', () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const advice = adviceFor({
+      ...base,
+      bean: { roastDate: today },
+      shot: shot({ extractionSec: 22 }),
+    });
+
+    expect(advice.ruleId).toBe('time-too-fast');
+    expect(advice.notes.join(' ')).toContain('still degassing');
+  });
+
+  it('says nothing about freshness once the bag is well rested', () => {
+    const twoWeeksAgo = new Date(Date.now() - 14 * 86_400_000).toISOString().slice(0, 10);
+    const advice = adviceFor({
+      ...base,
+      bean: { roastDate: twoWeeksAgo },
+      shot: shot({ extractionSec: 22 }),
+    });
+    expect(advice.notes.join(' ')).not.toContain('degassing');
+  });
+
+  it('says nothing about freshness with no bean supplied', () => {
+    const advice = adviceFor({ ...base, shot: shot({ extractionSec: 22 }) });
+    expect(advice.notes.join(' ')).not.toContain('degassing');
+  });
+});
+
 describe('adviceForSession', () => {
   const session: Session = {
     id: 'session-1',

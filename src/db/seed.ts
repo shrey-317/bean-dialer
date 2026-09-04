@@ -46,8 +46,10 @@ export async function seedIfEmpty(dbi: EspressoDB = db): Promise<{ seeded: boole
         defaultTempC: 95,
         preInfusion: { p1Sec: 3, p2Sec: 6 },
         hasAutoMode: true,
+        // OPV fixed at 9 bar; the flow-control valve is a separate restriction on top of that.
+        flowRestriction: 10,
       },
-      notes: 'Auto button runs P1 3 s low-pressure saturation, then a 6 s bloom pause.',
+      notes: 'Auto button runs P1 3 s low-pressure saturation, then a 6 s bloom pause. OPV at 9 bar.',
     },
     dbi,
   );
@@ -91,9 +93,11 @@ export async function seedIfEmpty(dbi: EspressoDB = db): Promise<{ seeded: boole
     {
       id: SEED_IDS.basket,
       kind: 'basket',
-      name: 'Stock 18 g basket',
+      name: 'Stock 20 g basket',
       isDefault: true,
-      spec: { capacityG: 18 },
+      // The Legato's 58 mm portafilter tops out around 20 g of depth — a 22 g basket bottoms
+      // out in it — so this is the larger of the machine's included baskets, not a round number.
+      spec: { capacityG: 20 },
     },
     dbi,
   );

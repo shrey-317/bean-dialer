@@ -198,6 +198,22 @@ function MachineCard({ machine }: { machine: MachineGear }) {
         The timer uses these to drive its stages. New sessions pick them up; a session already in
         progress keeps the timings it started with.
       </p>
+
+      <div className="mt-3">
+        <Field
+          label="Flow restriction"
+          hint="The group's flow-control valve, if it has one — separate from the OPV. Tracked for reference only; the coach doesn't yet know when this changes."
+        >
+          <Stepper
+            label="Flow restriction"
+            value={spec.flowRestriction ?? 0}
+            onChange={(v) => set({ flowRestriction: v })}
+            step={0.5}
+            min={0}
+            unit="ml/s"
+          />
+        </Field>
+      </div>
     </Card>
   );
 }

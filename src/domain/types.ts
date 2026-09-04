@@ -51,6 +51,13 @@ export interface MachineSpec {
   /** The machine's programmed pre-infusion, used to pre-fill the timer stages. */
   preInfusion: PreInfusion;
   hasAutoMode: boolean;
+  /**
+   * Grams-per-second the group's flow-control valve is opened to, on a machine that has one
+   * (independent of pump/OPV pressure). Recorded for reference only — changing this valve
+   * changes what a given grind setting does to a shot's timing, the same as changing dose
+   * would, but the coach doesn't currently track or react to when it changes.
+   */
+  flowRestriction?: number;
 }
 
 export interface GrinderSpec {
@@ -277,6 +284,7 @@ export interface Advice {
 
 export type AdviceRuleId =
   | 'no-shots'
+  | 'dose-out-of-range'
   | 'yield-out-of-range'
   | 'time-too-fast'
   | 'time-too-slow'
